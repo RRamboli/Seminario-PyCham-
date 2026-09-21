@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Cadastro de Produtos</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Cadastro de Produtos</h1>
+
+        <!-- Formulário -->
+        <form id="form-produto">
+            <input type="text" id="nome" placeholder="Nome do produto" required>
+            <input type="number" id="preco" placeholder="Preço (ex: 19.90)" step="0.01" required>
+            <input type="text" id="descricao" placeholder="Descrição (opcional)">
+            <button type="submit">Cadastrar</button>
+        </form>
+
+        <p id="mensagem"></p>
+
+        <!-- Lista -->
+        <h2>Produtos Cadastrados</h2>
+        <table id="tabela-produtos">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nome</th>
+                    <th>Preço</th>
+                    <th>Descrição</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        const API = "/api/produtos";
+
+        // Carregar produtos
+        async function carregarProdutos() {
+            const resp = await fetch(API);
+            const produtos = await resp.json();
+            const tbody = document.querySelector("#tabela-produtos tbody");
+            tbody.innerHTML = "";
+
+            if (produtos.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">Nenhum produto cadastrado.</td></tr>`;
+                return;
+            }
+
+            produtos.forEach(p => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${p.id}</td>
+                    <td>${p.nome}</td>
+                    <td>R$ ${p.preco.toFixed(2)}</td>
+                    <td>${p.descricao || "-"}</td>
+                    <td><button class="btn-remover" onclick="removerProduto(${p.id})">Remover</button></td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // Cadastrar produto
+        document.getElementById("form-produto").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const novoProduto = {
+                nome: document.getElementById("nome").value,
+                preco: document.getElementById("preco").value,
+                descricao: document.getElementById("descricao").value
+            };
+
+            const resp = await fetch(API, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(novoProduto)
+            });
+
+            const mensagem = document.getElementById("mensagem");
+
+            if (resp.ok) {
+                mensagem.textContent = "✅ Produto cadastrado com sucesso!";
+                mensagem.style.color = "green";
+                e.target.reset();
+                carregarProdutos();
+            } else {
+                const erro = await resp.json();
+                mensagem.textContent = "❌ " + (erro.erro || "Erro ao cadastrar.");
+                mensagem.style.color = "red";
+            }
+
+            setTimeout(() => mensagem.textContent = "", 3000);
+        });
+
+        // Remover produto
+        async function removerProduto(id) {
+            if (!confirm("Deseja realmente remover este produto?")) return;
+
+            await fetch(`${API}/${id}`, { method: "DELETE" });
+            carregarProdutos();
+        }
+
+        // Carrega ao abrir
+        carregarProdutos();
+    </script>
+</body>
+</html>
